@@ -4,9 +4,16 @@ import random
 import operator
 from functools import partial
 
+from deap import algorithms
+from deap import base
+from deap import creator
+from deap import tools
+from deap import gp
+
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0,1,2,3
 XSIZE,YSIZE = 14,14
-NFOOD = 1 # NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
+NFOOD = 1
+# NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
 
 # This class can be used to create a basic player object (snake agent)
 class SnakePlayer(list):
@@ -124,7 +131,7 @@ def displayStrategyRun():
 			food = placeFood(snake)
 			for f in food: win.addch(f[0], f[1], '@')
 			timer = 0
-		else:    
+		else:
 			last = snake.body.pop()
 			win.addch(last[0], last[1], ' ')
 			timer += 1 # timesteps since last eaten
