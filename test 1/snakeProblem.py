@@ -2,7 +2,6 @@
 import curses
 import random
 import operator
-
 from functools import partial
 
 from deap import algorithms
@@ -10,12 +9,6 @@ from deap import base
 from deap import creator
 from deap import tools
 from deap import gp
-
-# My extra import
-import math
-import matplotlib.pyplot as plt
-import numpy
-
 
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0,1,2,3
 XSIZE,YSIZE = 14,14
@@ -46,7 +39,9 @@ class SnakePlayer(list):
 
     def updatePosition(self):
         self.getAheadLocation()
-        self.body.insert(0, self.ahead)
+        self.body.insert(0, self.ahead )
+
+	## You are free to define more sensing options to the snake
 
     def changeDirectionUp(self):
         self.direction = S_UP
@@ -77,76 +72,6 @@ class SnakePlayer(list):
     def sense_tail_ahead(self):
         self.getAheadLocation()
         return self.ahead in self.body
-
-    # Extra functions
-    # TODO: Add extra functions
-
-    # Sense wall
-    def sense_wall_left(self):
-        return self.body[0][1] == 1
-
-    def sense_wall_right(self):
-        return self.body[0][1] == (XSIZE - 2)
-
-    def sense_wall_up(self):
-        return self.body[0][0] == 1
-
-    def sense_wall_down(self):
-        return self.body[0][0] == (YSIZE - 2)
-
-    # Sense food
-    def sense_food_left(self):
-        if ((self.body[0][0] == self.food[0][0]) and (self.body[0][1] == self.food[0][1] + 1)):
-            return True
-        else:
-            return False
-
-    def sense_food_right(self):
-        if ((self.body[0][0] == self.food[0][0]) and (self.body[0][1] == self.food[0][1] - 1)):
-            return True
-        else:
-            return False
-
-    def sense_food_up(self):
-        if ((self.body[0][0] == self.food[0][0] + 1) and (self.body[0][1] == self.food[0][1])):
-            return True
-        else:
-            return False
-
-    def sense_food_down(self):
-        if ((self.body[0][0] == self.food[0][0] - 1) and (self.body[0][1] == self.food[0][1])):
-            return True
-        else:
-            return False
-
-    # Sense tail
-    def sense_tail_left(self):
-        for n in range(1, len(self.body)):
-            if ((self.body[0][1] == self.body[n][1] + 1) and (self.body[0][0] == self.body[n][0])):
-                return True
-            else:
-                return False
-
-    def sense_tail_right(self):
-        for n in range(1, len(self.body)):
-            if ((self.body[0][1] == self.body[n][1] - 1) and (self.body[0][0] == self.body[n][0])):
-                return True
-            else:
-                return False
-
-    def sense_tail_up(self):
-        for n in range(1, len(self.body)):
-            if ((self.body[0][1] == self.body[n][1]) and (self.body[0][0] == self.body[n][0] + 1)):
-                return True
-            else:
-                return False
-
-    def sense_tail_down(self):
-        for n in range(1, len(self.body)):
-            if ((self.body[0][1] == self.body[n][1]) and (self.body[0][0] == self.body[n][0] - 1)):
-                return True
-            else:
-                return False
 
 # This function places a food item in the environment
 def placeFood(snake):
@@ -252,47 +177,10 @@ def runGame():
 
     return totalScore,
 
-# Initial pset
-pset = gp.PrimitiveSet("main", 0)
-
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
-
-# Initial toolbox
-toolbox = base.Toolbox()
-toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr_init)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-toolbox.register("compile", gp.compile, pset=pset)
-toolbox.register("evaluate", evaluate)
-toolbox.register("select", tools.selDoubleTournament, fitness_size=2, parsimony_size=1.10, fitness_first=True)
-toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.1)
-toolbox.register("expr_mut", gp.genFull, min_=0, max_=3)
-toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
-
-
-
 def main():
-
     global snake
     global pset
-    #global stats
-    #global halloffame
 
-    # Initial stats
-    stats.register("avg", numpy.mean)
-    stats.register("std", numpy.std)
-    stats.register("min", numpy.min)
-    stats.register("max", numpy.max)
-
-    halloffame = tools.HallOfFame(1)
-
-    random.seed(256)
-
-    # Initial some parameters
-    NGEN = 50
-    CXPB = 0.7
-    MUTPB = 0.2
-
-
+	## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
 
 main()

@@ -29,7 +29,7 @@ def playGame():
 
     score = 0
     key = KEY_RIGHT
-    snake = [[4,10], [4,9], [4,8], [4,7], [4,6], [4,5], [4,4], [4,3], [4,2], [4,1],[4,0]]                                     # Initial snake co-ordinates
+    snake = [[4,10], [4,9], [4,8], [4,7], [4,6], [4,5], [4,4], [4,3], [4,2], [4,1],[4,0] ]                                     # Initial snake co-ordinates
     food = []
     food = placeFood(snake,food)
     win.timeout(150)
