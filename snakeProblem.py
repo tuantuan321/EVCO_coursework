@@ -218,11 +218,11 @@ def placeFood(snake):
 snake = SnakePlayer()
 
 # Add a input to the function
-def displayStrategyRun(routine):
+def displayStrategyRun(individual):
     global snake
     global pset
 
-    routine = gp.compile(routine, pset=pset)
+    routine = gp.compile(individual, pset=pset)
 
     curses.initscr()
     win = curses.newwin(YSIZE, XSIZE, 0, 0)
@@ -242,6 +242,7 @@ def displayStrategyRun(routine):
     timer = 0
     collided = False
     while not collided and not timer == ((2*XSIZE) * YSIZE):
+        # Add a routine functio to run the game again
         routine()
 
 		# Set up the display
@@ -267,10 +268,12 @@ def displayStrategyRun(routine):
         collided = snake.snakeHasCollided()
         hitBounds = (timer == ((2*XSIZE) * YSIZE))
 
-    #print(collided)
-    #print(hitBounds)
-    input("Press to continue...")
     curses.endwin()
+
+    print(collided)
+    print(hitBounds)
+    input("Press to continue...")
+    #curses.endwin()
 
     return snake.score,
 
@@ -353,11 +356,11 @@ toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=8))
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=8))
 
-stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
-stats_size = tools.Statistics(len)
-mstats = tools.MultiStatistics(fitness = stats_fit, size = stats_size)
+# Initial stats
+mstats = tools.Statistics(lambda ind: ind.fitness.values)
+# stats_size = tools.Statistics(len)
+#mstats = tools.MultiStatistics(fitness = stats_fit)
 
-# TODO
 pool = multiprocessing.Pool()
 toolbox.register("map", pool.map)
 
@@ -369,13 +372,13 @@ def main():
     #random.seed(100)
 
     # Initial some parameters
-    NGEN = 50
+    NGEN = 10
     CXPB = 0.7
     MUTPB = 0.3
-    POP = 400
+    POP = 1000
 
     population = toolbox.population(n = POP)
-    hof = tools.HallOfFame(1)
+    hof = tools.HallOfFame(3)
 
     # Initial stats
     mstats.register("avg", numpy.mean)
@@ -386,8 +389,9 @@ def main():
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
     best = tools.selBest (population, 1)[0]
 
-    runGame(best)
-    displayStrategyRun(best)
+    # Show the game process
+    #runGame(best)
+    #displayStrategyRun(best)
 
     return population, hof, mstats
 
