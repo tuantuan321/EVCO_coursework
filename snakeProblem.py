@@ -108,47 +108,39 @@ class SnakePlayer(list):
 
     # Sense food
     def sense_food_up(self):
-        if len(self.food) == 0:
-            return False
         return self.body[0][0] > self.food[0][0]
 
     def sense_food_down(self):
-        if len(self.food) == 0:
-            return False
         return self.body[0][0] < self.food[0][0]
 
     def sense_food_left(self):
-        if len(self.food) == 0:
-            return False
         return self.body[0][1] > self.food[0][1]
 
     def sense_food_right(self):
-        if len(self.food) == 0:
-            return False
         return self.body[0][1] < self.food[0][1]
 
     # Sense tail
     def sense_tail_up(self):
         for i in range(1, len(self.body)):
-            if (self.body[0][0] == (self.body[i][0] + 1)) and (self.body[0][1] == self.body[i][1]):
+            if ((self.body[0][0] == (self.body[i][0] + 1)) and (self.body[0][1] == self.body[i][1])):
                 return True
         return False
 
     def sense_tail_down(self):
         for i in range(1, len(self.body)):
-            if (self.body[0][0] == (self.body[i][0] - 1)) and (self.body[0][1] == self.body[i][1]):
+            if ((self.body[0][0] == (self.body[i][0] - 1)) and (self.body[0][1] == self.body[i][1])):
                 return True
         return False
 
     def sense_tail_right(self):
         for i in range(1, len(self.body)):
-            if (self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] - 1):
+            if ((self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] - 1)):
                 return True
         return False
 
     def sense_tail_left(self):
         for i in range(1, len(self.body)):
-            if (self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] + 1):
+            if ((self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] + 1)):
                 return True
         return False
 
@@ -165,7 +157,7 @@ class SnakePlayer(list):
     def sense_obstacle_down(self):
         return self.sense_wall_down() or self.sense_tail_down()
 
-    # If food
+    # Check food position
     def if_food_left(self, out1, out2):
         return partial(if_then_else, self.sense_food_left, out1, out2)
 
@@ -178,7 +170,7 @@ class SnakePlayer(list):
     def if_food_down(self, out1, out2):
         return partial(if_then_else, self.sense_food_down, out1, out2)
 
-    # If obstacle
+    # Check obstacle around
     def if_obstacle_left(self, out1, out2):
         return partial(if_then_else, self.sense_obstacle_left, out1, out2)
 
@@ -191,7 +183,7 @@ class SnakePlayer(list):
     def if_obstacle_down(self, out1, out2):
         return partial(if_then_else, self.sense_obstacle_down, out1, out2)
 
-    # If move
+    # Check movement
     def if_left(self, out1, out2):
         return partial(if_then_else, lambda: self.direction == S_LEFT, out1, out2)
 
@@ -269,65 +261,25 @@ def displayStrategyRun(individual):
 
     curses.endwin()
 
-    print(collided)
-    print(hitBounds)
+    print("Collided: " + str(collided))
+    print("HitBounds: " + str(hitBounds))
     input("Press to continue...")
 
     return snake.score,
-
-# This function is used to simulate one game after the evaluation
-def displayBest(individual):
-    global pset
-    global snake
-
-    #routine = gp.compile(individual, pset=pset)
-    total_score = 0
-
-    for i in range(2):
-        routine = gp.compile(individual, pset=pset)
-        f_score = 0
-        timer = 0
-        collided = False
-
-        snake._reset()
-        food = placeFood(snake)
-
-        while not collided and not timer == ((2*XSIZE) * YSIZE):
-
-            routine()
-
-            snake.updatePosition()
-
-            if snake.body[0] in food:
-                f_score += 1
-                food = placeFood(snake)
-                timer = 0
-            else:
-                last = snake.body.pop()
-                timer += 1 # timesteps since last eaten
-
-            collided = snake.snakeHasCollided()
-
-        total_score += f_score
-
-    avg_score = total_score/2
-
-    print("Average Score: " + str(avg_score))
-
-    return avg_score,
-
 
 # This outline function provides partial code for running the game with an evolved agent
 # There is no graphical output, and it runs rapidly, making it ideal for
 # you need to modify it for running your agents through the game for evaluation
 # which will depend on what type of EA you have used, etc.
 def runGame(individual):
-    #global snake
+    global snake
     global pset
 
     routine = gp.compile(individual, pset)
 
     totalScore = 0
+
+    scores = []
 
     snake._reset()
     food = placeFood(snake)
@@ -346,7 +298,10 @@ def runGame(individual):
 
             totalScore += snake.score
 
-    return totalScore,
+    scores.append(snake.score)
+    avg_score = numpy.mean(scores)
+
+    return totalScore, avg_score
 
 # Initial pset
 pset = gp.PrimitiveSet("main", 0)
@@ -384,19 +339,22 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
 toolbox.register("evaluate", runGame)
+
 toolbox.register("select", tools.selTournament, tournsize=5)
-#toolbox.register("select", tools.selDoubleTournament, fitness_size=3, parsimony_size=1.05, fitness_first=True)
+
 toolbox.register("mate", gp.cxOnePoint)
 #toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.1)
 toolbox.register("expr_mut", gp.genFull, min_=1, max_=3)
-#toolbox.register("expr_mut", gp.genFull, min_=1, max_=3)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
 toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
 
 # Initial stats
-mstats = tools.Statistics(lambda ind: ind.fitness.values)
+stats_fitness = tools.Statistics(lambda ind: ind.fitness.values[0])
+stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
+mstats = tools.MultiStatistics(fitness=stats_fitness, score=stats_score)
+
 
 # Multiprocessing
 pool = multiprocessing.Pool()
@@ -413,7 +371,7 @@ def main():
     NGEN = 100
     CXPB = 0.8
     MUTPB = 0.2
-    POP = 700
+    POP = 1300
 
     population = toolbox.population(n = POP)
     hof = tools.HallOfFame(3)
@@ -427,7 +385,6 @@ def main():
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
     best_result = tools.selBest (population, 1)[0]
 
-    displayBest(best_result)
     # Show the game process
     #runGame(best)
     # displayStrategyRun(best_result)
