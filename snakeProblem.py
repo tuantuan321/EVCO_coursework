@@ -34,7 +34,6 @@ def if_then_else(condition, out1, out2):
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0,1,2,3
 XSIZE,YSIZE = 14,14
 NFOOD = 1
-# NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
 
 # This class can be used to create a basic player object (snake agent)
 class SnakePlayer(list):
@@ -273,9 +272,49 @@ def displayStrategyRun(individual):
     print(collided)
     print(hitBounds)
     input("Press to continue...")
-    #curses.endwin()
 
     return snake.score,
+
+# This function is used to simulate one game after the evaluation
+def displayBest(individual):
+    global pset
+    global snake
+
+    #routine = gp.compile(individual, pset=pset)
+    total_score = 0
+
+    for i in range(2):
+        routine = gp.compile(individual, pset=pset)
+        f_score = 0
+        timer = 0
+        collided = False
+
+        snake._reset()
+        food = placeFood(snake)
+
+        while not collided and not timer == ((2*XSIZE) * YSIZE):
+
+            routine()
+
+            snake.updatePosition()
+
+            if snake.body[0] in food:
+                f_score += 1
+                food = placeFood(snake)
+                timer = 0
+            else:
+                last = snake.body.pop()
+                timer += 1 # timesteps since last eaten
+
+            collided = snake.snakeHasCollided()
+
+        total_score += f_score
+
+    avg_score = total_score/2
+
+    print("Average Score: " + str(avg_score))
+
+    return avg_score,
 
 
 # This outline function provides partial code for running the game with an evolved agent
@@ -345,22 +384,21 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
 toolbox.register("evaluate", runGame)
-#toolbox.register("select", tools.selTournament, tournsize=5)
-toolbox.register("select", tools.selDoubleTournament, fitness_size=3, parsimony_size=1.05, fitness_first=True)
-#toolbox.register("mate", gp.cxOnePoint)
-toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.1)
-toolbox.register("expr_mut", gp.genHalfAndHalf, min_=0, max_=6)
+toolbox.register("select", tools.selTournament, tournsize=5)
+#toolbox.register("select", tools.selDoubleTournament, fitness_size=3, parsimony_size=1.05, fitness_first=True)
+toolbox.register("mate", gp.cxOnePoint)
+#toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.1)
+toolbox.register("expr_mut", gp.genFull, min_=1, max_=3)
 #toolbox.register("expr_mut", gp.genFull, min_=1, max_=3)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=8))
-toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=8))
+toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
+toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
 
 # Initial stats
 mstats = tools.Statistics(lambda ind: ind.fitness.values)
-# stats_size = tools.Statistics(len)
-#mstats = tools.MultiStatistics(fitness = stats_fit)
 
+# Multiprocessing
 pool = multiprocessing.Pool()
 toolbox.register("map", pool.map)
 
@@ -372,10 +410,10 @@ def main():
     #random.seed(100)
 
     # Initial some parameters
-    NGEN = 10
-    CXPB = 0.7
-    MUTPB = 0.3
-    POP = 1000
+    NGEN = 100
+    CXPB = 0.8
+    MUTPB = 0.2
+    POP = 700
 
     population = toolbox.population(n = POP)
     hof = tools.HallOfFame(3)
@@ -387,11 +425,12 @@ def main():
     mstats.register("max", numpy.max)
 
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
-    best = tools.selBest (population, 1)[0]
+    best_result = tools.selBest (population, 1)[0]
 
+    displayBest(best_result)
     # Show the game process
     #runGame(best)
-    #displayStrategyRun(best)
+    # displayStrategyRun(best_result)
 
     return population, hof, mstats
 
