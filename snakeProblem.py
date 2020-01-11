@@ -92,8 +92,6 @@ class SnakePlayer(list):
         self.getAheadLocation()
         return self.ahead in self.body
 
-    # Extra functions
-
     # Sense wall
     def sense_wall_left(self):
         return self.body[0][0] == 1
@@ -209,7 +207,7 @@ def placeFood(snake):
 
 snake = SnakePlayer()
 
-# Add a input to the function
+# Add a input to the function  
 def displayStrategyRun(individual):
     global snake
     global pset
@@ -323,6 +321,11 @@ pset.addPrimitive(snake.if_right, 2)
 pset.addPrimitive(snake.if_up, 2)
 pset.addPrimitive(snake.if_down, 2)
 
+# Extra Testing
+#pset.addPrimitive(snake.if_food_ahead, 2)
+#pset.addPrimitive(snake.if_wall_ahead, 2)
+#pset.addPrimitive(snake.if_tail_ahead, 2)
+
 
 pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
@@ -389,10 +392,15 @@ def main():
     random.seed(128)
 
     # Initial parameters
-    NGEN = 500
+    NGEN = 100
     CXPB = 0.7
-    MUTPB = 0.5
+    MUTPB = 0.7
     POP = 1200
+
+    ## output tree
+    OUTPUT_TREE = False
+    ## run simulation?
+    SIMULATE_AFTER_EVALUATION = False
 
     # generate population
     population = toolbox.population(n = POP)
@@ -422,10 +430,12 @@ def main():
         n = g.get_node(i)
         n.attr["label"] = labels[i]
 
-    g.draw("tree.pdf")
+    if OUTPUT_TREE == True:
+        g.draw("tree.pdf")
 
     ## Show the game process
-    displayStrategyRun(expr[0])
+    if SIMULATE_AFTER_EVALUATION == True:
+        displayStrategyRun(expr[0])
 
     return population, hof, mstats
 
