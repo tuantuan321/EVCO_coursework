@@ -11,12 +11,13 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-# My extra import
+# Extra import
 import math
 import matplotlib.pyplot as plt
 import numpy
 import multiprocessing
 import copy
+import pygraphviz as pgv
 
 def progn(*args):
     for arg in args:
@@ -263,6 +264,7 @@ def displayStrategyRun(individual):
 
     print("Collided: " + str(collided))
     print("HitBounds: " + str(hitBounds))
+    print("Score:" + str(snake.score))
     input("Press to continue...")
 
     return snake.score,
@@ -321,6 +323,7 @@ pset.addPrimitive(snake.if_right, 2)
 pset.addPrimitive(snake.if_up, 2)
 pset.addPrimitive(snake.if_down, 2)
 
+
 pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
@@ -331,30 +334,48 @@ creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
 
 # Initial toolbox
 toolbox = base.Toolbox()
-toolbox.register("expr_init", gp.genFull, pset=pset, min_=0, max_=4)
+
+## gp.genFull: each leaf has the same depth between min and max.
+#toolbox.register("expr_init", gp.genFull, pset=pset, min_=0, max_=5)
+
+## gp.genGrow: each leaf might have a different depth between min and max
+toolbox.register("expr_init", gp.genGrow, pset=pset, min_=0, max_=5)
 
 toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr_init)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 toolbox.register("compile", gp.compile, pset=pset)
 
+## Use the runGame() function to evaluate
 toolbox.register("evaluate", runGame)
 
-toolbox.register("select", tools.selTournament, tournsize=5)
+## Choose doubletournament as selection method
+#toolbox.register("select", tools.selTournament, tournsize=5)
+toolbox.register("select", tools.selDoubleTournament, fitness_size=6, parsimony_size=1.05, fitness_first=True)
 
+## gp.cxOnePoint: executes a one point crossover on the input sequence individuals
 toolbox.register("mate", gp.cxOnePoint)
-#toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.1)
-toolbox.register("expr_mut", gp.genFull, min_=1, max_=3)
-toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
-toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=10))
+## gp.cxOnePointLeafBiased: randomly select crossover point in each individual
+## and exchange each subtree with the point as root between each individual
+#toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.2)
 
-# Initial stats
+#toolbox.register("expr_mut", gp.genGrow, min_=0, max_=3)
+
+## gp.mutUniform: randomly select a point in the tree individual
+## then replace the subtree at that point as a root by the expression generated using method expr()
+#toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
+toolbox.register("mutate", gp.mutNodeReplacement, pset=pset)
+
+## limit the depth
+## because python cannot evaluate a tree higher than 90
+toolbox.decorate("mate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
+toolbox.decorate("mutate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
+
+# Shows the fitness value and the curren score
 stats_fitness = tools.Statistics(lambda ind: ind.fitness.values[0])
 stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
 mstats = tools.MultiStatistics(fitness=stats_fitness, score=stats_score)
-
 
 # Multiprocessing
 pool = multiprocessing.Pool()
@@ -365,29 +386,46 @@ def main():
     global snake
     global pset
 
-    #random.seed(100)
+    random.seed(128)
 
-    # Initial some parameters
-    NGEN = 100
-    CXPB = 0.8
-    MUTPB = 0.2
-    POP = 1300
+    # Initial parameters
+    NGEN = 500
+    CXPB = 0.7
+    MUTPB = 0.5
+    POP = 1200
 
+    # generate population
     population = toolbox.population(n = POP)
-    hof = tools.HallOfFame(3)
 
-    # Initial stats
+    ## store best individual
+    ## contains the best individual that ever lived in the population during the evolution
+    hof = tools.HallOfFame(1)
+
     mstats.register("avg", numpy.mean)
     mstats.register("std", numpy.std)
-    mstats.register("min", numpy.min)
+    #mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
 
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
-    best_result = tools.selBest (population, 1)[0]
 
-    # Show the game process
-    #runGame(best)
-    # displayStrategyRun(best_result)
+    ## draw the tree
+    ## code from: http://deap.gel.ulaval.ca/doc/default/tutorials/advanced/gp.html
+    expr = tools.selBest(population, 1)
+    nodes, edges, labels = gp.graph(expr[0])
+
+    g = pgv.AGraph()
+    g.add_nodes_from(nodes)
+    g.add_edges_from(edges)
+    g.layout(prog="dot")
+
+    for i in nodes:
+        n = g.get_node(i)
+        n.attr["label"] = labels[i]
+
+    g.draw("tree.pdf")
+
+    ## Show the game process
+    displayStrategyRun(expr[0])
 
     return population, hof, mstats
 
