@@ -309,16 +309,15 @@ def evaluateGame(individual):
     new_totalScore = 0
 
     ## This function is used to avoid lucky placement of the food
-    n = 2
+    n = 3
 
     for i in range(n):
         totalScore, avgScore = runGame(individual)
-        new_totalScore += totalScore
 
         if avgScore > new_avgScore:
             new_avgScore = avgScore
 
-    return new_totalScore/n, new_avgScore
+    return new_avgScore,
 
 # Initial pset
 pset = gp.PrimitiveSet("main", 0)
@@ -344,7 +343,7 @@ pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
 pset.addTerminal(snake.changeDirectionDown)
 
-creator.create("FitnessMax", base.Fitness, weights=(1.0, 1.0 ))
+creator.create("FitnessMax", base.Fitness, weights=(1.0, ))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
 
 # Initial toolbox
@@ -388,9 +387,9 @@ toolbox.decorate("mate", gp.staticLimit(operator.attrgetter("height"), max_value
 toolbox.decorate("mutate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
 
 # Shows the fitness value and the curren score
-stats_total_score = tools.Statistics(lambda ind: ind.fitness.values[0])
-stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
-mstats = tools.MultiStatistics(Total_Score=stats_total_score, Score=stats_score)
+mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
+
+
 #mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
 
 # Multiprocessing
@@ -416,7 +415,7 @@ def main():
     ## output tree
     OUTPUT_TREE = False
     ## run simulation?
-    SIMULATE_AFTER_EVALUATION = False
+    SIMULATE_AFTER_EVALUATION = True
 
     #generate population
     population = toolbox.population(n = POP)

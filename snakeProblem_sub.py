@@ -305,20 +305,17 @@ def runGame(individual):
 
 ## Fitness function
 def evaluateGame(individual):
-    new_avgScore = 0
     new_totalScore = 0
 
     ## This function is used to avoid lucky placement of the food
-    n = 2
+    n = 3
 
     for i in range(n):
         totalScore, avgScore = runGame(individual)
         new_totalScore += totalScore
 
-        if avgScore > new_avgScore:
-            new_avgScore = avgScore
-
-    return new_totalScore/n, new_avgScore
+    new_totalScore = new_totalScore/n
+    return new_totalScore, 
 
 # Initial pset
 pset = gp.PrimitiveSet("main", 0)
@@ -344,7 +341,7 @@ pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
 pset.addTerminal(snake.changeDirectionDown)
 
-creator.create("FitnessMax", base.Fitness, weights=(1.0, 1.0 ))
+creator.create("FitnessMax", base.Fitness, weights=(1.0, ))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
 
 # Initial toolbox
@@ -369,11 +366,11 @@ toolbox.register("evaluate", evaluateGame)
 toolbox.register("select", tools.selDoubleTournament, fitness_size=6, parsimony_size=1.05, fitness_first=True)
 
 ## gp.cxOnePoint: executes a one point crossover on the input sequence individuals
-#toolbox.register("mate", gp.cxOnePoint)
+toolbox.register("mate", gp.cxOnePoint)
 
 ## gp.cxOnePointLeafBiased: randomly select crossover point in each individual
 ## and exchange each subtree with the point as root between each individual
-toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.2)
+#toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.2)
 
 toolbox.register("expr_mut", gp.genGrow, min_=0, max_=3)
 
@@ -387,10 +384,10 @@ toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate("mate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
 toolbox.decorate("mutate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
 
-# Shows the fitness value and the curren score
-stats_total_score = tools.Statistics(lambda ind: ind.fitness.values[0])
-stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
-mstats = tools.MultiStatistics(Total_Score=stats_total_score, Score=stats_score)
+# Shows the fitness value
+mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
+#stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
+#mstats = tools.MultiStatistics(Total_Score=stats_total_score, Score=stats_score)
 #mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
 
 # Multiprocessing
@@ -402,21 +399,19 @@ def main():
     global snake
     global pset
 
-    new_avg_Score = 0
-
-    random.seed(128)
+    #random.seed(128)
 
     # Initial parameters
 
     NGEN = 100
     CXPB = 0.7
     MUTPB = 0.7
-    POP = 600
+    POP = 1000
 
     ## output tree
     OUTPUT_TREE = False
     ## run simulation?
-    SIMULATE_AFTER_EVALUATION = False
+    SIMULATE_AFTER_EVALUATION = True
 
     #generate population
     population = toolbox.population(n = POP)
@@ -427,9 +422,8 @@ def main():
 
     mstats.register("avg", numpy.mean)
     mstats.register("std", numpy.std)
-    #mstats.register("min", numpy.min)
+    mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
-
 
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
 
