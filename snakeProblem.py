@@ -2,6 +2,10 @@
 import curses
 import random
 import operator
+import math
+import numpy
+import copy
+import multiprocessing
 
 from functools import partial
 
@@ -11,12 +15,7 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-# Extra import
-import math
 import matplotlib.pyplot as plt
-import numpy
-import multiprocessing
-import copy
 import pygraphviz as pgv
 
 def progn(*args):
@@ -118,26 +117,26 @@ class SnakePlayer(list):
     def sense_food_right(self):
         return self.body[0][1] < self.food[0][1]
 
-    # Sense tail
-    def sense_tail_up(self):
+    # Sense body
+    def sense_body_up(self):
         for i in range(1, len(self.body)):
             if ((self.body[0][0] == (self.body[i][0] + 1)) and (self.body[0][1] == self.body[i][1])):
                 return True
         return False
 
-    def sense_tail_down(self):
+    def sense_body_down(self):
         for i in range(1, len(self.body)):
             if ((self.body[0][0] == (self.body[i][0] - 1)) and (self.body[0][1] == self.body[i][1])):
                 return True
         return False
 
-    def sense_tail_right(self):
+    def sense_body_right(self):
         for i in range(1, len(self.body)):
             if ((self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] - 1)):
                 return True
         return False
 
-    def sense_tail_left(self):
+    def sense_body_left(self):
         for i in range(1, len(self.body)):
             if ((self.body[0][0] == self.body[i][0]) and (self.body[0][1] == self.body[i][1] + 1)):
                 return True
@@ -145,16 +144,16 @@ class SnakePlayer(list):
 
     # Sense obstacle
     def sense_obstacle_left(self):
-        return self.sense_wall_left() or self.sense_tail_left()
+        return self.sense_wall_left() or self.sense_body_left()
 
     def sense_obstacle_right(self):
-        return self.sense_wall_right() or self.sense_tail_right()
+        return self.sense_wall_right() or self.sense_body_right()
 
     def sense_obstacle_up(self):
-        return self.sense_wall_up() or self.sense_tail_up()
+        return self.sense_wall_up() or self.sense_body_up()
 
     def sense_obstacle_down(self):
-        return self.sense_wall_down() or self.sense_tail_down()
+        return self.sense_wall_down() or self.sense_body_down()
 
     # Check food position
     def if_food_left(self, out1, out2):
@@ -183,17 +182,19 @@ class SnakePlayer(list):
         return partial(if_then_else, self.sense_obstacle_down, out1, out2)
 
     # Check movement
-    def if_left(self, out1, out2):
+    def if_direction_left(self, out1, out2):
         return partial(if_then_else, lambda: self.direction == S_LEFT, out1, out2)
 
-    def if_right(self, out1, out2):
+    def if_direction_right(self, out1, out2):
         return partial(if_then_else, lambda: self.direction == S_RIGHT, out1, out2)
 
-    def if_up(self, out1, out2):
+    def if_direction_up(self, out1, out2):
         return partial(if_then_else, lambda: self.direction == S_UP, out1, out2)
 
-    def if_down(self, out1, out2):
+    def if_direction_down(self, out1, out2):
         return partial(if_then_else, lambda: self.direction == S_DOWN, out1, out2)
+
+
 
 # This function places a food item in the environment
 def placeFood(snake):
@@ -207,7 +208,7 @@ def placeFood(snake):
 
 snake = SnakePlayer()
 
-# Add a input to the function  
+# Add a input to the function
 def displayStrategyRun(individual):
     global snake
     global pset
@@ -262,7 +263,7 @@ def displayStrategyRun(individual):
 
     print("Collided: " + str(collided))
     print("HitBounds: " + str(hitBounds))
-    print("Score:" + str(snake.score))
+    print("Simulate Score:" + str(snake.score))
     input("Press to continue...")
 
     return snake.score,
@@ -299,9 +300,26 @@ def runGame(individual):
             totalScore += snake.score
 
     scores.append(snake.score)
-    avg_score = numpy.mean(scores)
+    avgScore = numpy.mean(scores)
 
-    return totalScore, avg_score
+    return totalScore, avgScore
+
+
+def evaluateGame(individual):
+    new_avgScore = 0
+    new_totalScore = 0
+    #new_avg_Score = 0
+    ## This function is used to avoid lucky placement of the food
+    n = 3
+
+    for i in range(n):
+        totalScore, avgScore = runGame(individual)
+        new_totalScore += totalScore
+
+        if avgScore > new_avgScore:
+            new_avgScore = avgScore
+
+    return int(new_totalScore/n), new_avgScore
 
 # Initial pset
 pset = gp.PrimitiveSet("main", 0)
@@ -316,16 +334,11 @@ pset.addPrimitive(snake.if_obstacle_right, 2)
 pset.addPrimitive(snake.if_obstacle_up, 2)
 pset.addPrimitive(snake.if_obstacle_down, 2)
 
-pset.addPrimitive(snake.if_left, 2)
-pset.addPrimitive(snake.if_right, 2)
-pset.addPrimitive(snake.if_up, 2)
-pset.addPrimitive(snake.if_down, 2)
+pset.addPrimitive(snake.if_direction_left, 2)
+pset.addPrimitive(snake.if_direction_right, 2)
+pset.addPrimitive(snake.if_direction_up, 2)
 
-# Extra Testing
-#pset.addPrimitive(snake.if_food_ahead, 2)
-#pset.addPrimitive(snake.if_wall_ahead, 2)
-#pset.addPrimitive(snake.if_tail_ahead, 2)
-
+pset.addPrimitive(snake.if_direction_down, 2)
 
 pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
@@ -350,7 +363,7 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
 ## Use the runGame() function to evaluate
-toolbox.register("evaluate", runGame)
+toolbox.register("evaluate", evaluateGame)
 
 ## Choose doubletournament as selection method
 #toolbox.register("select", tools.selTournament, tournsize=5)
@@ -376,9 +389,10 @@ toolbox.decorate("mate", gp.staticLimit(operator.attrgetter("height"), max_value
 toolbox.decorate("mutate", gp.staticLimit(operator.attrgetter("height"), max_value=8))
 
 # Shows the fitness value and the curren score
-stats_fitness = tools.Statistics(lambda ind: ind.fitness.values[0])
+stats_total_score = tools.Statistics(lambda ind: ind.fitness.values[0])
 stats_score = tools.Statistics(lambda ind: ind.fitness.values[1])
-mstats = tools.MultiStatistics(fitness=stats_fitness, score=stats_score)
+mstats = tools.MultiStatistics(Total_Score=stats_total_score, Score=stats_score)
+#mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
 
 # Multiprocessing
 pool = multiprocessing.Pool()
@@ -389,20 +403,23 @@ def main():
     global snake
     global pset
 
+    new_avg_Score = 0
+
     random.seed(128)
 
     # Initial parameters
-    NGEN = 100
+
+    NGEN = 50
     CXPB = 0.7
     MUTPB = 0.7
-    POP = 1200
+    POP = 600
 
     ## output tree
     OUTPUT_TREE = False
     ## run simulation?
-    SIMULATE_AFTER_EVALUATION = False
+    SIMULATE_AFTER_EVALUATION = True
 
-    # generate population
+    #generate population
     population = toolbox.population(n = POP)
 
     ## store best individual
@@ -414,13 +431,14 @@ def main():
     #mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
 
+
     algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
+
+    expr = tools.selBest(population, 1)
 
     ## draw the tree
     ## code from: http://deap.gel.ulaval.ca/doc/default/tutorials/advanced/gp.html
-    expr = tools.selBest(population, 1)
     nodes, edges, labels = gp.graph(expr[0])
-
     g = pgv.AGraph()
     g.add_nodes_from(nodes)
     g.add_edges_from(edges)
@@ -431,11 +449,13 @@ def main():
         n.attr["label"] = labels[i]
 
     if OUTPUT_TREE == True:
-        g.draw("tree.pdf")
+        g.draw("syntax_tree.pdf")
 
     ## Show the game process
     if SIMULATE_AFTER_EVALUATION == True:
         displayStrategyRun(expr[0])
+
+    print("Finished!")
 
     return population, hof, mstats
 
