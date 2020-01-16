@@ -298,10 +298,15 @@ def runGame(individual):
             snake.body.pop()
             timer += 1 # timesteps since last eaten
 
-            totalScore += snake.score
+        totalScore += snake.score
 
     scores.append(snake.score)
     avgScore = numpy.mean(scores)
+
+    # if snake moves many steps without eating food
+    if timer == XSIZE * YSIZE:
+        avgScore = 0
+        totalScore = 0
 
     return totalScore, avgScore
 
@@ -407,7 +412,7 @@ def main():
 
     # Initial parameters
 
-    NGEN = 500
+    NGEN = 100
     CXPB = 0.5
     MUTPB = 0.7
     POP = 1000
@@ -415,9 +420,9 @@ def main():
     ## output tree
     OUTPUT_TREE = False
     ## run simulation?
-    SIMULATE_AFTER_EVALUATION = True
+    SIMULATE_AFTER_EVALUATION = False
     ## print evaluation result for analysis
-    OUTPUT_RESULT = True
+    OUTPUT_RESULT = False
 
     #generate population
     population = toolbox.population(n = POP)
@@ -434,7 +439,7 @@ def main():
     population, logbook = algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
 
     expr = tools.selBest(population, 1)
-    print(expr[0])
+    #print(expr[0])
 
     ## Output data for analysis
     if OUTPUT_RESULT == True:
@@ -466,7 +471,6 @@ def main():
     g.add_nodes_from(nodes)
     g.add_edges_from(edges)
     g.layout(prog="dot")
-
 
     for i in nodes:
         n = g.get_node(i)
