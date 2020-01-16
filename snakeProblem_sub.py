@@ -73,6 +73,9 @@ class SnakePlayer(list):
     def changeDirectionLeft(self):
         self.direction = S_LEFT
 
+    def doNothing(self):
+        pass
+
     def snakeHasCollided(self):
         self.hit = False
         if self.body[0][0] == 0 or self.body[0][0] == (YSIZE-1) or self.body[0][1] == 0 or self.body[0][1] == (XSIZE-1): self.hit = True
@@ -302,20 +305,20 @@ def runGame(individual):
 
     return totalScore, avgScore
 
-
 ## Fitness function
 def evaluateGame(individual):
+
     new_totalScore = 0
 
-    ## This function is used to avoid lucky placement of the food
-    n = 3
+    ## This function is used to avoid lucky placement of food
+    N = 3
 
-    for i in range(n):
+    for i in range(N):
         totalScore, avgScore = runGame(individual)
         new_totalScore += totalScore
 
-    new_totalScore = new_totalScore/n
-    return new_totalScore, 
+    new_totalScore = new_totalScore/N
+    return new_totalScore,
 
 # Initial pset
 pset = gp.PrimitiveSet("main", 0)
@@ -340,6 +343,7 @@ pset.addTerminal(snake.changeDirectionLeft)
 pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionUp)
 pset.addTerminal(snake.changeDirectionDown)
+pset.addTerminal(snake.doNothing)
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0, ))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -366,18 +370,18 @@ toolbox.register("evaluate", evaluateGame)
 toolbox.register("select", tools.selDoubleTournament, fitness_size=6, parsimony_size=1.05, fitness_first=True)
 
 ## gp.cxOnePoint: executes a one point crossover on the input sequence individuals
-toolbox.register("mate", gp.cxOnePoint)
+#toolbox.register("mate", gp.cxOnePoint)
 
 ## gp.cxOnePointLeafBiased: randomly select crossover point in each individual
 ## and exchange each subtree with the point as root between each individual
-#toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.2)
+toolbox.register("mate", gp.cxOnePointLeafBiased, termpb=0.2)
 
-toolbox.register("expr_mut", gp.genGrow, min_=0, max_=3)
+#toolbox.register("expr_mut", gp.genGrow, min_=0, max_=3)
 
 ## gp.mutUniform: randomly select a point in the tree individual
 ## then replace the subtree at that point as a root by the expression generated using method expr()
-toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
-#toolbox.register("mutate", gp.mutNodeReplacement, pset=pset)
+#toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
+toolbox.register("mutate", gp.mutNodeReplacement, pset=pset)
 
 ## limit the depth
 ## because python cannot evaluate a tree higher than 90
@@ -399,12 +403,12 @@ def main():
     global snake
     global pset
 
-    #random.seed(128)
+    random.seed(128)
 
     # Initial parameters
 
-    NGEN = 100
-    CXPB = 0.7
+    NGEN = 500
+    CXPB = 0.5
     MUTPB = 0.7
     POP = 1000
 
@@ -412,30 +416,57 @@ def main():
     OUTPUT_TREE = False
     ## run simulation?
     SIMULATE_AFTER_EVALUATION = True
+    ## print evaluation result for analysis
+    OUTPUT_RESULT = True
 
     #generate population
     population = toolbox.population(n = POP)
 
     ## store best individual
     ## contains the best individual that ever lived in the population during the evolution
-    hof = tools.HallOfFame(1)
+    hof = tools.HallOfFame(3)
 
     mstats.register("avg", numpy.mean)
     mstats.register("std", numpy.std)
     mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
 
-    algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
+    population, logbook = algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
 
     expr = tools.selBest(population, 1)
+    print(expr[0])
+
+    ## Output data for analysis
+    if OUTPUT_RESULT == True:
+        fd = open('result.txt', 'a')
+        row_title = ("Generation, Maximum Fitness, Average Fitness" + "\n")
+        fd.write(row_title)
+
+        for i in range(NGEN):
+            gen = logbook.select('gen')[i] + 1
+            avg_fit = logbook.select('avg')[i]
+            max_fit = logbook.select('max')[i]
+            row = (gen, ", ", max_fit, ", ", avg_fit, "\n")
+            fd.write("".join(map(str, row)))
+        fd.close()
+
+    #logbook.header = 'gen', 'nevals', "avg", "std"
+    #print(logbook)
+
+    ## Print the best solution
+    #index = numpy.argmax([ind.fitness for ind in result_population])
+    #x = evaluateGame(result_population[index])
+    #print(str(x) + '  ' + str(result_population[index].fitness))
 
     ## draw the tree
     ## code from: http://deap.gel.ulaval.ca/doc/default/tutorials/advanced/gp.html
+    ## -------------------------------------
     nodes, edges, labels = gp.graph(expr[0])
     g = pgv.AGraph()
     g.add_nodes_from(nodes)
     g.add_edges_from(edges)
     g.layout(prog="dot")
+
 
     for i in nodes:
         n = g.get_node(i)
@@ -443,6 +474,7 @@ def main():
 
     if OUTPUT_TREE == True:
         g.draw("syntax_tree.pdf")
+    ## -------------------------------------
 
     ## Show the game process
     if SIMULATE_AFTER_EVALUATION == True:
