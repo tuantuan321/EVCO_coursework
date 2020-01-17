@@ -209,7 +209,7 @@ def placeFood(snake):
 
 snake = SnakePlayer()
 
-# Add a input to the function
+# Add an input to the function
 def displayStrategyRun(individual):
     global snake
     global pset
@@ -303,7 +303,7 @@ def runGame(individual):
     scores.append(snake.score)
     avgScore = numpy.mean(scores)
 
-    # if snake moves many steps without eating food
+    # if snake moves many steps without eating a food
     if timer == XSIZE * YSIZE:
         avgScore = 0
         totalScore = 0
@@ -314,6 +314,7 @@ def runGame(individual):
 def evaluateGame(individual):
 
     new_totalScore = 0
+    new_avgScore = 0
 
     ## This function is used to avoid lucky placement of food
     N = 3
@@ -321,8 +322,15 @@ def evaluateGame(individual):
     for i in range(N):
         totalScore, avgScore = runGame(individual)
         new_totalScore += totalScore
+        new_avgScore += avgScore
 
+    new_avgScore = new_avgScore/N
     new_totalScore = new_totalScore/N
+
+    ## Although we calculate the average score per each game, but we only use this value
+    ## to see how the snake evolves
+    ## For the fitness function, only return the total score
+
     return new_totalScore,
 
 # Initial pset
@@ -341,7 +349,6 @@ pset.addPrimitive(snake.if_obstacle_down, 2)
 pset.addPrimitive(snake.if_direction_left, 2)
 pset.addPrimitive(snake.if_direction_right, 2)
 pset.addPrimitive(snake.if_direction_up, 2)
-
 pset.addPrimitive(snake.if_direction_down, 2)
 
 pset.addTerminal(snake.changeDirectionLeft)
@@ -399,7 +406,8 @@ mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
 #mstats = tools.MultiStatistics(Total_Score=stats_total_score, Score=stats_score)
 #mstats = tools.Statistics(lambda ind: ind.fitness.values[0])
 
-# Multiprocessing
+## Multiprocessing
+## code from: https://deap.readthedocs.io/en/master/tutorials/basic/part4.html
 pool = multiprocessing.Pool()
 toolbox.register("map", pool.map)
 
@@ -410,12 +418,12 @@ def main():
 
     random.seed(128)
 
-    # Initial parameters
+    ## Initial parameters
 
-    NGEN = 100
-    CXPB = 0.5
-    MUTPB = 0.7
-    POP = 1000
+    NGEN = 100  ## generation
+    CXPB = 0.5  ## crossover probability
+    MUTPB = 0.7  ## mutation probability
+    POP = 1500  ## population size
 
     ## output tree
     OUTPUT_TREE = False
@@ -424,7 +432,7 @@ def main():
     ## print evaluation result for analysis
     OUTPUT_RESULT = False
 
-    #generate population
+    ## generate population
     population = toolbox.population(n = POP)
 
     ## store best individual
@@ -438,15 +446,19 @@ def main():
 
     population, logbook = algorithms.eaSimple(population, toolbox, CXPB, MUTPB, NGEN, stats = mstats, halloffame=hof, verbose=True)
 
+    ## select the best individual
     expr = tools.selBest(population, 1)
     #print(expr[0])
 
     ## Output data for analysis
     if OUTPUT_RESULT == True:
         fd = open('result.txt', 'a')
+
+        ## Output the title
         row_title = ("Generation, Maximum Fitness, Average Fitness" + "\n")
         fd.write(row_title)
 
+        ## Output each generation in separate line
         for i in range(NGEN):
             gen = logbook.select('gen')[i] + 1
             avg_fit = logbook.select('avg')[i]
@@ -480,13 +492,13 @@ def main():
         g.draw("syntax_tree.pdf")
     ## -------------------------------------
 
-    ## Show the game process
+    ## Simulate the game to identify the strategy of snake movement
     if SIMULATE_AFTER_EVALUATION == True:
         displayStrategyRun(expr[0])
 
-    print("Finished!")
-
     return population, hof, mstats
 
+## If running in Windows, the main function should be modified
+## In order to use the multiprocessing module 
 if __name__ == "__main__":
     main()
